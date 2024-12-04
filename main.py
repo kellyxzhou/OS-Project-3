@@ -40,7 +40,7 @@ class BTree:
         if self.root_id == 0:
             self.create_root_node(key, value)
         else:
-            print(f"Inserting key: {key}, value: {value}")
+            self.insert_into_node(self.root_id, key, value)
 
     def create_root_node(self, key, value):
         node_id = self.next_block_id
@@ -61,7 +61,48 @@ class BTree:
         self.root_id = node_id
         print(f"Root node created with key: {key}, value: {value}")
 
-    def split_node(self, node_id):
+    def insert_into_node(self, node_id, key, value):
+        with open(self.index_file, 'r+b') as f:
+            f.seek(HEADER_SIZE + node_id * NODE_SIZE)
+            node_data = f.read(NODE_SIZE)
+
+            num_keys = struct.unpack(">Q", node_data[16:24])[0]
+
+            if num_keys < KEYS_PER_NODE:
+                self.insert_into_non_full_node(node_id, key, value, node_data)
+            else:
+                self.split_node(node_id, key, value)
+
+    def insert_into_non_full_node(self, node_id, key, value, node_data):
+        num_keys = struct.unpack(">Q", node_data[16:24])[0]
+        keys = [struct.unpack(">Q", node_data[24 + i * 8:32 + i * 8])[0]
+                for i in range(num_keys)]
+        values = [struct.unpack(
+            ">Q", node_data[152 + i * 8:160 + i * 8])[0] for i in range(num_keys)]
+
+        for i in range(num_keys):
+            if key < keys[i]:
+                keys.insert(i, key)
+                values.insert(i, value)
+                break
+        else:
+            keys.append(key)
+            values.append(value)
+
+        new_node_data = struct.pack(">Q", node_id)
+        new_node_data += struct.pack(">Q", 0)
+        new_node_data += struct.pack(">Q", len(keys))
+        for i in range(len(keys)):
+            new_node_data += struct.pack(">Q", keys[i])
+            new_node_data += struct.pack(">Q", values[i])
+        new_node_data += b'\x00' * 160
+        new_node_data += b'\x00' * (NODE_SIZE - len(new_node_data))
+
+        with open(self.index_file, 'r+b') as f:
+            f.seek(HEADER_SIZE + node_id * NODE_SIZE)
+            f.write(new_node_data)
+
+    def split_node(self, node_id, key, value):
         print(f"Splitting node with ID: {node_id}")
 
     def search(self, key):
@@ -69,7 +110,19 @@ class BTree:
             print("No index file is open.")
             return
 
-        print(f"Searching for key: {key}")
+        with open(self.index_file, 'r+b') as f:
+            f.seek(HEADER_SIZE)
+            node_data = f.read(NODE_SIZE)
+            num_keys = struct.unpack(">Q", node_data[16:24])[0]
+
+            keys = [struct.unpack(">Q", node_data[24 + i * 8:32 + i * 8])[0]
+                    for i in range(num_keys)]
+            if key in keys:
+                index = keys.index(key)
+                print(f"Found key: {key}, value: {
+                      node_data[152 + index * 8:160 + index * 8]}")
+            else:
+                print(f"Key {key} not found")
 
     def quit(self):
         print("Exiting the program.")

@@ -23,6 +23,7 @@ I’m starting to think about how to handle the actual B-tree operations, like i
 The immediate goal is to implement the `insert` method and lay the foundation for handling the B-tree structure. Once the insert operation works, I will start implementing the `search` functionality.
 
 ### Devlog Entry - [2024-12-04, 2:00 AM]
+
 **Thoughts so far:**
 I started implementing the logic for inserting key-value pairs into the B-tree. I added functionality to create the root node when the first key-value pair is inserted. The split_node function is a placeholder for when a node exceeds its capacity, which will be implemented in future commits. For now, the program creates the root node when inserting the first pair and prints a message confirming the action.
 
@@ -33,3 +34,15 @@ Implement logic to insert key-value pairs into the root node and handle node spl
 Define the structure of nodes more clearly, including key/value pairs and child pointers.
 Prepare for testing by inserting multiple key-value pairs and verifying the root creation and data insertion.
 Expand search functionality later, as the tree structure grows.
+
+### Devlog Entry - [2024-12-04, 3:00 PM]
+
+**Thoughts so far:**
+I began implementing the logic for inserting key-value pairs into the B-tree. I introduced methods for inserting into nodes, handling node splits when the node is full, and searching for keys. Although the node splitting and searching are not fully implemented, I have laid the groundwork for handling node splits when the node is full and handling a basic search for the root node.
+
+I also updated the insert method to insert key-value pairs into the root node and added the method to insert into non-full nodes.
+
+**Plan for this session:**
+Implement the actual logic for node splitting, handling when a node exceeds its capacity.
+Expand the search functionality to handle a multi-level B-tree traversal.
+Add more functionality to test and validate the node insertion and search operations.
