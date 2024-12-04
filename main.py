@@ -33,9 +33,42 @@ class BTree:
         print(f"Created index file {filename}")
 
     def insert(self, key, value):
-        print(f"Inserting key: {key}, value: {value}")
+        if self.index_file is None:
+            print("No index file is open.")
+            return
+
+        if self.root_id == 0:
+            self.create_root_node(key, value)
+        else:
+            print(f"Inserting key: {key}, value: {value}")
+
+    def create_root_node(self, key, value):
+        node_id = self.next_block_id
+        self.next_block_id += 1
+
+        with open(self.index_file, 'r+b') as f:
+            f.seek(HEADER_SIZE)
+            node_data = struct.pack(">Q", node_id)
+            node_data += struct.pack(">Q", 0)
+            node_data += struct.pack(">Q", 1)
+            node_data += struct.pack(">Q", key)
+            node_data += struct.pack(">Q", value)
+            node_data += b'\x00' * 160
+            node_data += b'\x00' * (NODE_SIZE - len(node_data))
+
+            f.write(node_data)
+
+        self.root_id = node_id
+        print(f"Root node created with key: {key}, value: {value}")
+
+    def split_node(self, node_id):
+        print(f"Splitting node with ID: {node_id}")
 
     def search(self, key):
+        if self.index_file is None:
+            print("No index file is open.")
+            return
+
         print(f"Searching for key: {key}")
 
     def quit(self):

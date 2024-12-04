@@ -21,3 +21,15 @@ I’m starting to think about how to handle the actual B-tree operations, like i
 - Once the insert operation is in place, I will be able to test the functionality by inserting a few keys and verifying their storage in the index file.
 
 The immediate goal is to implement the `insert` method and lay the foundation for handling the B-tree structure. Once the insert operation works, I will start implementing the `search` functionality.
+
+### Devlog Entry - [2024-12-04, 2:00 AM]
+**Thoughts so far:**
+I started implementing the logic for inserting key-value pairs into the B-tree. I added functionality to create the root node when the first key-value pair is inserted. The split_node function is a placeholder for when a node exceeds its capacity, which will be implemented in future commits. For now, the program creates the root node when inserting the first pair and prints a message confirming the action.
+
+The insert method checks if the root exists and creates it if necessary. The logic for handling node splitting will come later once the tree grows and nodes fill up.
+
+**Plan for this session:**
+Implement logic to insert key-value pairs into the root node and handle node splitting.
+Define the structure of nodes more clearly, including key/value pairs and child pointers.
+Prepare for testing by inserting multiple key-value pairs and verifying the root creation and data insertion.
+Expand search functionality later, as the tree structure grows.
