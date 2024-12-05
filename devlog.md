@@ -46,3 +46,14 @@ I also updated the insert method to insert key-value pairs into the root node an
 Implement the actual logic for node splitting, handling when a node exceeds its capacity.
 Expand the search functionality to handle a multi-level B-tree traversal.
 Add more functionality to test and validate the node insertion and search operations.
+
+### Devlog Entry - [2024-12-04, 7:08 PM]
+**Thoughts so far:**
+Worked on improving the user interaction by addressing an issue where valid commands were being rejected as "invalid" due to extra spaces or incorrect handling of input. I updated the menu method to handle user inputs more effectively by stripping spaces and converting input to lowercase. I also allowed the user to input either the full command name (e.g., create, insert, search, quit) or the numeric option associated with each command (e.g., 1, 2, 3, 4), which adds flexibility to the interface.
+
+The program now correctly handles all commands and performs the appropriate actions when the user selects them. There is still some work to do to handle more complex operations like node splitting and multi-level B-tree traversal, but the basic structure is in place.
+
+Plan for this session:
+
+Refine the input handling for the menu commands to ensure correct processing.
+Test the create, insert, and search operations to make sure they work as expected.

@@ -136,25 +136,26 @@ class BTree:
             print("3. Search for a key (search)")
             print("4. Quit (quit)")
 
+            # Strip spaces and convert to lowercase
             command = input("Enter command: ").strip().lower()
 
-            if command == "create":
+            if command == "create" or command == "1":
                 filename = input("Enter the index file name: ").strip()
                 self.create(filename)
-            elif command == "insert":
+            elif command == "insert" or command == "2":
                 if self.index_file is None:
                     print("No index file is open.")
                     continue
                 key = int(input("Enter key (unsigned integer): "))
                 value = int(input("Enter value (unsigned integer): "))
                 self.insert(key, value)
-            elif command == "search":
+            elif command == "search" or command == "3":
                 if self.index_file is None:
                     print("No index file is open.")
                     continue
                 key = int(input("Enter key (unsigned integer): "))
                 self.search(key)
-            elif command == "quit":
+            elif command == "quit" or command == "4":
                 self.quit()
             else:
                 print("Invalid command.")
