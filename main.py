@@ -103,7 +103,66 @@ class BTree:
             f.write(new_node_data)
 
     def split_node(self, node_id, key, value):
-        print(f"Splitting node with ID: {node_id}")
+        with open(self.index_file, 'r+b') as f:
+            f.seek(HEADER_SIZE + node_id * NODE_SIZE)
+            node_data = f.read(NODE_SIZE)
+
+            num_keys = struct.unpack(">Q", node_data[16:24])[0]
+            keys = [struct.unpack(">Q", node_data[24 + i * 8:32 + i * 8])[0]
+                    for i in range(num_keys)]
+            values = [struct.unpack(
+                ">Q", node_data[152 + i * 8:160 + i * 8])[0] for i in range(num_keys)]
+
+            keys.append(key)
+            values.append(value)
+
+            combined = list(zip(keys, values))
+            combined.sort(key=lambda x: x[0])
+
+            mid_index = len(combined) // 2
+            left_keys = [k for k, v in combined[:mid_index]]
+            left_values = [v for k, v in combined[:mid_index]]
+            right_keys = [k for k, v in combined[mid_index:]]
+            right_values = [v for k, v in combined[mid_index:]]
+
+            left_node_id = self.next_block_id
+            self.next_block_id += 1
+            with open(self.index_file, 'r+b') as f:
+                f.seek(HEADER_SIZE + left_node_id * NODE_SIZE)
+                new_node_data = struct.pack(">Q", left_node_id)
+                new_node_data += struct.pack(">Q", 0)
+                new_node_data += struct.pack(">Q", len(left_keys))
+                for i in range(len(left_keys)):
+                    new_node_data += struct.pack(">Q", left_keys[i])
+                    new_node_data += struct.pack(">Q", left_values[i])
+                new_node_data += b'\x00' * 160
+                new_node_data += b'\x00' * (NODE_SIZE - len(new_node_data))
+                f.write(new_node_data)
+
+            right_node_id = self.next_block_id
+            self.next_block_id += 1
+            with open(self.index_file, 'r+b') as f:
+                f.seek(HEADER_SIZE + right_node_id * NODE_SIZE)
+                new_node_data = struct.pack(">Q", right_node_id)
+                new_node_data += struct.pack(">Q", 0)
+                new_node_data += struct.pack(">Q", len(right_keys))
+                for i in range(len(right_keys)):
+                    new_node_data += struct.pack(">Q", right_keys[i])
+                    new_node_data += struct.pack(">Q", right_values[i])
+                new_node_data += b'\x00' * 160
+                new_node_data += b'\x00' * (NODE_SIZE - len(new_node_data))
+                f.write(new_node_data)
+
+            middle_key = combined[mid_index][0]
+
+            if self.root_id != node_id:
+                parent_node_id = self.get_parent(node_id)
+                self.insert_into_node(parent_node_id, middle_key, 0)
+            else:
+                self.create_root_node(middle_key, 0)
+
+            print(f"Node {node_id} split into two nodes: {
+                left_node_id} and {right_node_id}")
 
     def search(self, key):
         if self.index_file is None:
@@ -136,7 +195,6 @@ class BTree:
             print("3. Search for a key (search)")
             print("4. Quit (quit)")
 
-            # Strip spaces and convert to lowercase
             command = input("Enter command: ").strip().lower()
 
             if command == "create" or command == "1":

@@ -48,12 +48,25 @@ Expand the search functionality to handle a multi-level B-tree traversal.
 Add more functionality to test and validate the node insertion and search operations.
 
 ### Devlog Entry - [2024-12-04, 7:08 PM]
+
 **Thoughts so far:**
 Worked on improving the user interaction by addressing an issue where valid commands were being rejected as "invalid" due to extra spaces or incorrect handling of input. I updated the menu method to handle user inputs more effectively by stripping spaces and converting input to lowercase. I also allowed the user to input either the full command name (e.g., create, insert, search, quit) or the numeric option associated with each command (e.g., 1, 2, 3, 4), which adds flexibility to the interface.
 
 The program now correctly handles all commands and performs the appropriate actions when the user selects them. There is still some work to do to handle more complex operations like node splitting and multi-level B-tree traversal, but the basic structure is in place.
 
-Plan for this session:
-
+**Plan for this session:**
 Refine the input handling for the menu commands to ensure correct processing.
 Test the create, insert, and search operations to make sure they work as expected.
+
+### Devlog Entry - [2024-12-05, 2:28 PM]
+
+**Thoughts so far:**
+Focused on implementing the foundation for the B-tree structure, particularly addressing the insertion of key-value pairs and handling node creation. I added the functionality for creating the root node if the index file is empty. When a node becomes full, the logic to split the node is added as a placeholder for future development. The search function now checks for keys within the root node and displays the corresponding values if found. The B-tree structure is now capable of handling the basic insertion and search operations.
+
+I also updated the menu to allow users to interact with the program and perform the main operations (create, insert, search, and quit). The `split_node` function was introduced as a placeholder for when nodes need to be split, but the actual logic for splitting nodes will be developed later.
+
+**Plan for this session:**
+- Continue refining the insertion process and node splitting logic.
+- Implement the actual splitting logic for nodes when they exceed their capacity.
+- Expand the search functionality to handle multi-level B-tree traversal.
+- Test the insertion and search functionality with different sets of key-value pairs.
