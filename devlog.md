@@ -30,10 +30,10 @@ I started implementing the logic for inserting key-value pairs into the B-tree. 
 The insert method checks if the root exists and creates it if necessary. The logic for handling node splitting will come later once the tree grows and nodes fill up.
 
 **Plan for this session:**
-Implement logic to insert key-value pairs into the root node and handle node splitting.
-Define the structure of nodes more clearly, including key/value pairs and child pointers.
-Prepare for testing by inserting multiple key-value pairs and verifying the root creation and data insertion.
-Expand search functionality later, as the tree structure grows.
+- Implement logic to insert key-value pairs into the root node and handle node splitting.
+- Define the structure of nodes more clearly, including key/value pairs and child pointers.
+- Prepare for testing by inserting multiple key-value pairs and verifying the root creation and data insertion.
+- Expand search functionality later, as the tree structure grows.
 
 ### Devlog Entry - [2024-12-04, 3:00 PM]
 
@@ -70,3 +70,15 @@ I also updated the menu to allow users to interact with the program and perform 
 - Implement the actual splitting logic for nodes when they exceed their capacity.
 - Expand the search functionality to handle multi-level B-tree traversal.
 - Test the insertion and search functionality with different sets of key-value pairs.
+
+### Devlog Entry - [2024-12-05, 4:03 PM]
+
+**Thoughts so far:**
+Implemented the logic for splitting a B-tree node when it exceeds its maximum capacity. The node is split into two parts, with the middle key moved up to the parent node. If the parent doesn't exist (i.e., the split happens at the root), a new root node is created. The splitting logic is now in place, though it still needs to handle updating child pointers and managing nodes beyond the root. The program now allows for basic insertions, splits, and searches within the root node.
+
+Additionally, the search functionality was enhanced to search for keys in the root node and return the associated value. The menu system was improved to allow the user to interact with the program by choosing from options like creating a new index file, inserting key-value pairs, searching for keys, and quitting the program.
+
+**Plan for this session:**
+- Refine the logic for splitting nodes to handle child pointers and ensure that nodes are correctly linked after a split.
+- Expand the search functionality to traverse the tree and handle multi-level B-trees.
+- Implement more commands such as printing and extracting data, as well as error handling for invalid inputs and edge cases.

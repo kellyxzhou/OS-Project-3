@@ -21,16 +21,35 @@ class BTree:
             overwrite = input(
                 f"File {filename} already exists. Overwrite? (y/n): ").strip().lower()
             if overwrite != 'y':
+                print(f"Command aborted. {filename} was not overwritten.")
                 return
 
-        with open(filename, 'wb') as f:
-            f.write(MAGIC_NUMBER)
-            f.write(struct.pack(">Q", 0))
-            f.write(struct.pack(">Q", self.next_block_id))
-            f.write(b'\x00' * (HEADER_SIZE - len(MAGIC_NUMBER) - 2 * 8))
+            with open(filename, 'wb') as f:
+                f.write(MAGIC_NUMBER)
+                f.write(struct.pack(">Q", 0))
+                f.write(struct.pack(">Q", self.next_block_id))
+                f.write(b'\x00' * (HEADER_SIZE - len(MAGIC_NUMBER) - 2 * 8))
+
+            self.index_file = filename
+            print(f"Created index file {filename}")
+
+    def open(self, filename):
+        if not os.path.exists(filename):
+            print(f"File {filename} does not exist.")
+            return
+
+        with open(filename, 'rb') as f:
+            magic_number = f.read(len(MAGIC_NUMBER))
+            if magic_number != MAGIC_NUMBER:
+                print(f"Invalid file format.")
+                return
+
+            f.seek(8)
+            self.root_id = struct.unpack(">Q", f.read(8))[0]
+            self.next_block_id = struct.unpack(">Q", f.read(8))[0]
 
         self.index_file = filename
-        print(f"Created index file {filename}")
+        print(f"Opened index file {filename}")
 
     def insert(self, key, value):
         if self.index_file is None:
@@ -103,6 +122,7 @@ class BTree:
             f.write(new_node_data)
 
     def split_node(self, node_id, key, value):
+        print(f"Splitting node with ID: {node_id}")
         with open(self.index_file, 'r+b') as f:
             f.seek(HEADER_SIZE + node_id * NODE_SIZE)
             node_data = f.read(NODE_SIZE)
@@ -115,15 +135,14 @@ class BTree:
 
             keys.append(key)
             values.append(value)
-
             combined = list(zip(keys, values))
             combined.sort(key=lambda x: x[0])
 
-            mid_index = len(combined) // 2
-            left_keys = [k for k, v in combined[:mid_index]]
-            left_values = [v for k, v in combined[:mid_index]]
-            right_keys = [k for k, v in combined[mid_index:]]
-            right_values = [v for k, v in combined[mid_index:]]
+            mid = len(combined) // 2
+            left_keys = [k for k, v in combined[:mid]]
+            left_values = [v for k, v in combined[:mid]]
+            right_keys = [k for k, v in combined[mid:]]
+            right_values = [v for k, v in combined[mid:]]
 
             left_node_id = self.next_block_id
             self.next_block_id += 1
@@ -153,16 +172,8 @@ class BTree:
                 new_node_data += b'\x00' * (NODE_SIZE - len(new_node_data))
                 f.write(new_node_data)
 
-            middle_key = combined[mid_index][0]
-
-            if self.root_id != node_id:
-                parent_node_id = self.get_parent(node_id)
-                self.insert_into_node(parent_node_id, middle_key, 0)
-            else:
-                self.create_root_node(middle_key, 0)
-
-            print(f"Node {node_id} split into two nodes: {
-                left_node_id} and {right_node_id}")
+            middle_key = combined[mid][0]
+            self.create_root_node(middle_key, 0)
 
     def search(self, key):
         if self.index_file is None:
