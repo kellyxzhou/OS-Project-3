@@ -24,14 +24,17 @@ class BTree:
                 print(f"Command aborted. {filename} was not overwritten.")
                 return
 
-            with open(filename, 'wb') as f:
-                f.write(MAGIC_NUMBER)
-                f.write(struct.pack(">Q", 0))
-                f.write(struct.pack(">Q", self.next_block_id))
-                f.write(b'\x00' * (HEADER_SIZE - len(MAGIC_NUMBER) - 2 * 8))
+        with open(filename, 'wb') as f:
+            f.write(MAGIC_NUMBER)
+            f.write(struct.pack(">Q", 0))  # Root ID (0 if empty)
+            f.write(struct.pack(">Q", self.next_block_id))  # Next Block ID
+            # Fill remaining space
+            f.write(b'\x00' * (HEADER_SIZE - len(MAGIC_NUMBER) - 2 * 8))
 
-            self.index_file = filename
-            print(f"Created index file {filename}")
+        self.index_file = filename
+        print(f"Created index file {filename}")
+        # Automatically open the file after creating it
+        self.open(filename)
 
     def open(self, filename):
         if not os.path.exists(filename):
@@ -67,13 +70,22 @@ class BTree:
 
         with open(self.index_file, 'r+b') as f:
             f.seek(HEADER_SIZE)
-            node_data = struct.pack(">Q", node_id)
-            node_data += struct.pack(">Q", 0)
-            node_data += struct.pack(">Q", 1)
-            node_data += struct.pack(">Q", key)
-            node_data += struct.pack(">Q", value)
-            node_data += b'\x00' * 160
-            node_data += b'\x00' * (NODE_SIZE - len(node_data))
+
+            # Block ID, Parent ID, Number of Keys
+            node_data = struct.pack(">Q", node_id)  # Block ID
+            node_data += struct.pack(">Q", 0)  # Parent ID
+            node_data += struct.pack(">Q", 1)  # Number of keys
+
+            # Keys (19 keys)
+            node_data += struct.pack(">Q", key)  # First key
+            node_data += b'\x00' * (152 - 8)  # Remaining empty keys
+
+            # Values (19 values)
+            node_data += struct.pack(">Q", value)  # First value
+            node_data += b'\x00' * (152 - 8)  # Remaining empty values
+
+            # Child Pointers (20 child pointers)
+            node_data += b'\x00' * 160  # Empty child pointers
 
             f.write(node_data)
 
@@ -97,8 +109,9 @@ class BTree:
         keys = [struct.unpack(">Q", node_data[24 + i * 8:32 + i * 8])[0]
                 for i in range(num_keys)]
         values = [struct.unpack(
-            ">Q", node_data[152 + i * 8:160 + i * 8])[0] for i in range(num_keys)]
+            ">Q", node_data[176 + i * 8:184 + i * 8])[0] for i in range(num_keys)]
 
+        # Insert the new key-value pair
         for i in range(num_keys):
             if key < keys[i]:
                 keys.insert(i, key)
@@ -108,14 +121,26 @@ class BTree:
             keys.append(key)
             values.append(value)
 
-        new_node_data = struct.pack(">Q", node_id)
-        new_node_data += struct.pack(">Q", 0)
-        new_node_data += struct.pack(">Q", len(keys))
+        num_keys += 1
+
+        # Prepare the new node data
+        new_node_data = struct.pack(">Q", node_id)  # Block ID
+        new_node_data += struct.pack(">Q", 0)  # Parent ID
+        new_node_data += struct.pack(">Q", num_keys)  # Updated number of keys
+
+        # Write updated keys
         for i in range(len(keys)):
             new_node_data += struct.pack(">Q", keys[i])
+        new_node_data += b'\x00' * (152 - len(keys) * 8)  # Pad remaining keys
+
+        # Write updated values
+        for i in range(len(values)):
             new_node_data += struct.pack(">Q", values[i])
+        new_node_data += b'\x00' * \
+            (152 - len(values) * 8)  # Pad remaining values
+
+        # Write empty child pointers
         new_node_data += b'\x00' * 160
-        new_node_data += b'\x00' * (NODE_SIZE - len(new_node_data))
 
         with open(self.index_file, 'r+b') as f:
             f.seek(HEADER_SIZE + node_id * NODE_SIZE)
@@ -131,7 +156,7 @@ class BTree:
             keys = [struct.unpack(">Q", node_data[24 + i * 8:32 + i * 8])[0]
                     for i in range(num_keys)]
             values = [struct.unpack(
-                ">Q", node_data[152 + i * 8:160 + i * 8])[0] for i in range(num_keys)]
+                ">Q", node_data[176 + i * 8:184 + i * 8])[0] for i in range(num_keys)]
 
             keys.append(key)
             values.append(value)
@@ -149,13 +174,16 @@ class BTree:
             with open(self.index_file, 'r+b') as f:
                 f.seek(HEADER_SIZE + left_node_id * NODE_SIZE)
                 new_node_data = struct.pack(">Q", left_node_id)
+                # Parent ID (to be updated later)
                 new_node_data += struct.pack(">Q", 0)
                 new_node_data += struct.pack(">Q", len(left_keys))
                 for i in range(len(left_keys)):
                     new_node_data += struct.pack(">Q", left_keys[i])
                     new_node_data += struct.pack(">Q", left_values[i])
+                # Child pointers (to be updated later)
                 new_node_data += b'\x00' * 160
-                new_node_data += b'\x00' * (NODE_SIZE - len(new_node_data))
+                new_node_data += b'\x00' * \
+                    (NODE_SIZE - len(new_node_data))  # Fill remaining bytes
                 f.write(new_node_data)
 
             right_node_id = self.next_block_id
@@ -163,13 +191,16 @@ class BTree:
             with open(self.index_file, 'r+b') as f:
                 f.seek(HEADER_SIZE + right_node_id * NODE_SIZE)
                 new_node_data = struct.pack(">Q", right_node_id)
+                # Parent ID (to be updated later)
                 new_node_data += struct.pack(">Q", 0)
                 new_node_data += struct.pack(">Q", len(right_keys))
                 for i in range(len(right_keys)):
                     new_node_data += struct.pack(">Q", right_keys[i])
                     new_node_data += struct.pack(">Q", right_values[i])
+                # Child pointers (to be updated later)
                 new_node_data += b'\x00' * 160
-                new_node_data += b'\x00' * (NODE_SIZE - len(new_node_data))
+                new_node_data += b'\x00' * \
+                    (NODE_SIZE - len(new_node_data))  # Fill remaining bytes
                 f.write(new_node_data)
 
             middle_key = combined[mid][0]
@@ -183,14 +214,19 @@ class BTree:
         with open(self.index_file, 'r+b') as f:
             f.seek(HEADER_SIZE)
             node_data = f.read(NODE_SIZE)
+
+            # Read number of keys
             num_keys = struct.unpack(">Q", node_data[16:24])[0]
 
+            # Extract keys and values
             keys = [struct.unpack(">Q", node_data[24 + i * 8:32 + i * 8])[0]
                     for i in range(num_keys)]
+            values = [struct.unpack(
+                ">Q", node_data[176 + i * 8:184 + i * 8])[0] for i in range(num_keys)]
+
             if key in keys:
                 index = keys.index(key)
-                print(f"Found key: {key}, value: {
-                      node_data[152 + index * 8:160 + index * 8]}")
+                print(f"Found key: {key}, value: {values[index]}")
             else:
                 print(f"Key {key} not found")
 

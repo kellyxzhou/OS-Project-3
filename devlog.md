@@ -82,3 +82,26 @@ Additionally, the search functionality was enhanced to search for keys in the ro
 - Refine the logic for splitting nodes to handle child pointers and ensure that nodes are correctly linked after a split.
 - Expand the search functionality to traverse the tree and handle multi-level B-trees.
 - Implement more commands such as printing and extracting data, as well as error handling for invalid inputs and edge cases.
+
+### Devlog - [2024-12-07, 1:40 PM]
+
+**What I did today:**
+- Today, I worked on fixing the issue where the value was incorrectly displayed as `0` when searching for a key after inserting a key-value pair into the B-tree index file.
+- I identified that the problem was due to misalignment of key-value pairs within the node structure and improper offsets used when writing and reading from the file. Specifically, the values were not being written to the correct offsets in the file, causing them to not be correctly read during the search.
+- I implemented a thorough fix by updating the logic in the following areas:
+  - **Inserting key-value pairs**: I ensured that the values were written to the correct offsets (starting at byte 176 for the values section in each node).
+  - **Searching for keys**: I corrected the logic to ensure values were correctly unpacked from the proper positions when searching for a key.
+  - **Node layout**: I ensured the node structure strictly adhered to the 512-byte layout with proper padding for unused space.
+
+**What I learned:**
+- The B-tree node layout was crucial to ensure that keys and values were written and read correctly from the file. Understanding the exact positions in the file where keys, values, and child pointers are stored allowed me to correct the offsets and avoid misreading data.
+- It became clear that managing file offsets in a binary file for a data structure like a B-tree requires precise control over the layout, especially when dealing with multiple elements (keys, values, child pointers) in each node.
+
+**What I plan to do next:**
+- Continue testing the B-tree implementation, especially for larger sets of data, to ensure the insert, search, and split functionalities are all operating as expected.
+- Look into potential improvements for node splitting logic to handle cases when nodes exceed the maximum number of keys and need to be split efficiently.
+
+**Challenges faced:**
+- A significant challenge was aligning the data structures in memory with the actual file format. It was critical to ensure that the key-value pairs and child pointers were placed at the correct offsets in the node structure.
+- Debugging the issue took some time because the misalignment only became apparent during searches, making it tricky to pinpoint the exact cause. Once I identified the node layout problem, the fix was straightforward.
+
