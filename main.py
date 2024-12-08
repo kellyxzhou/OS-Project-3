@@ -69,23 +69,30 @@ class BTree:
         self.next_block_id += 1
 
         with open(self.index_file, 'r+b') as f:
-            f.seek(HEADER_SIZE)
+            f.seek(HEADER_SIZE + (node_id * NODE_SIZE))
 
             # Block ID, Parent ID, Number of Keys
             node_data = struct.pack(">Q", node_id)  # Block ID
-            node_data += struct.pack(">Q", 0)  # Parent ID
+            node_data += struct.pack(">Q", 0)  # Parent ID (0 for root)
             node_data += struct.pack(">Q", 1)  # Number of keys
 
-            # Keys (19 keys)
-            node_data += struct.pack(">Q", key)  # First key
-            node_data += b'\x00' * (152 - 8)  # Remaining empty keys
+            # Initialize Keys (19 keys)
+            keys = [key] + [0] * (KEYS_PER_NODE - 1)
+            for k in keys:
+                node_data += struct.pack(">Q", k)
 
-            # Values (19 values)
-            node_data += struct.pack(">Q", value)  # First value
-            node_data += b'\x00' * (152 - 8)  # Remaining empty values
+            # Initialize Values (19 values)
+            values = [value] + [0] * (VALUES_PER_NODE - 1)
+            for v in values:
+                node_data += struct.pack(">Q", v)
 
-            # Child Pointers (20 child pointers)
-            node_data += b'\x00' * 160  # Empty child pointers
+            # Initialize Child Pointers (20 pointers)
+            child_pointers = [0] * CHILDREN_PER_NODE
+            for c in child_pointers:
+                node_data += struct.pack(">Q", c)
+
+            # Pad remaining space to NODE_SIZE
+            node_data += b'\x00' * (NODE_SIZE - len(node_data))
 
             f.write(node_data)
 
@@ -94,69 +101,73 @@ class BTree:
 
     def insert_into_node(self, node_id, key, value):
         with open(self.index_file, 'r+b') as f:
-            f.seek(HEADER_SIZE + node_id * NODE_SIZE)
+            # Locate the node in the file
+            f.seek(HEADER_SIZE + (node_id * NODE_SIZE))
             node_data = f.read(NODE_SIZE)
 
+            # If the node data is too short, return an error
+            if len(node_data) < NODE_SIZE:
+                print(f"Error: Node data is too short.")
+                return
+
+            # Read the number of keys, keys, and values
             num_keys = struct.unpack(">Q", node_data[16:24])[0]
+            keys = [struct.unpack(">Q", node_data[24 + (i * 8):32 + (i * 8)])[0]
+                    for i in range(num_keys)]
+            values = [struct.unpack(
+                ">Q", node_data[176 + (i * 8):184 + (i * 8)])[0] for i in range(num_keys)]
 
-            if num_keys < KEYS_PER_NODE:
-                self.insert_into_non_full_node(node_id, key, value, node_data)
+            # Insert the new key-value pair in sorted order
+            for i in range(num_keys):
+                if key < keys[i]:
+                    keys.insert(i, key)
+                    values.insert(i, value)
+                    break
             else:
-                self.split_node(node_id, key, value)
+                keys.append(key)
+                values.append(value)
 
-    def insert_into_non_full_node(self, node_id, key, value, node_data):
-        num_keys = struct.unpack(">Q", node_data[16:24])[0]
-        keys = [struct.unpack(">Q", node_data[24 + i * 8:32 + i * 8])[0]
-                for i in range(num_keys)]
-        values = [struct.unpack(
-            ">Q", node_data[176 + i * 8:184 + i * 8])[0] for i in range(num_keys)]
+            num_keys += 1
 
-        # Insert the new key-value pair
-        for i in range(num_keys):
-            if key < keys[i]:
-                keys.insert(i, key)
-                values.insert(i, value)
-                break
-        else:
-            keys.append(key)
-            values.append(value)
+            # Rebuild the node data
+            new_node_data = struct.pack(">Q", node_id)  # Block ID
+            new_node_data += struct.pack(">Q", 0)  # Parent ID
+            # Updated number of keys
+            new_node_data += struct.pack(">Q", num_keys)
 
-        num_keys += 1
+            # Write updated keys
+            for k in keys:
+                new_node_data += struct.pack(">Q", k)
+            new_node_data += b'\x00' * \
+                ((KEYS_PER_NODE - num_keys) * 8)  # Pad remaining keys
 
-        # Prepare the new node data
-        new_node_data = struct.pack(">Q", node_id)  # Block ID
-        new_node_data += struct.pack(">Q", 0)  # Parent ID
-        new_node_data += struct.pack(">Q", num_keys)  # Updated number of keys
+            # Write updated values
+            for v in values:
+                new_node_data += struct.pack(">Q", v)
+            new_node_data += b'\x00' * \
+                ((VALUES_PER_NODE - num_keys) * 8)  # Pad remaining values
 
-        # Write updated keys
-        for i in range(len(keys)):
-            new_node_data += struct.pack(">Q", keys[i])
-        new_node_data += b'\x00' * (152 - len(keys) * 8)  # Pad remaining keys
+            # Preserve child pointers
+            new_node_data += node_data[344:504]
 
-        # Write updated values
-        for i in range(len(values)):
-            new_node_data += struct.pack(">Q", values[i])
-        new_node_data += b'\x00' * \
-            (152 - len(values) * 8)  # Pad remaining values
+            # Pad the node to NODE_SIZE
+            new_node_data += b'\x00' * (NODE_SIZE - len(new_node_data))
 
-        # Write empty child pointers
-        new_node_data += b'\x00' * 160
-
-        with open(self.index_file, 'r+b') as f:
-            f.seek(HEADER_SIZE + node_id * NODE_SIZE)
+            # Write back the updated node to the file
+            f.seek(HEADER_SIZE + (node_id * NODE_SIZE))
             f.write(new_node_data)
 
     def split_node(self, node_id, key, value):
         print(f"Splitting node with ID: {node_id}")
         with open(self.index_file, 'r+b') as f:
-            f.seek(HEADER_SIZE + node_id * NODE_SIZE)
+            f.seek(HEADER_SIZE + (node_id * NODE_SIZE))
             node_data = f.read(NODE_SIZE)
 
             num_keys = struct.unpack(">Q", node_data[16:24])[0]
-            keys = [struct.unpack(">Q", node_data[24 + i * 8:32 + i * 8])[0]
-                    for i in range(num_keys)]
+            keys = [struct.unpack(
+                ">Q", node_data[24 + (i * 8):32 + (i * 8)])[0] for i in range(num_keys)]
             values = [struct.unpack(
-                ">Q", node_data[176 + i * 8:184 + i * 8])[0] for i in range(num_keys)]
+                ">Q", node_data[176 + (i * 8):184 + (i * 8)])[0] for i in range(num_keys)]
 
             keys.append(key)
             values.append(value)
@@ -172,7 +183,7 @@ class BTree:
             left_node_id = self.next_block_id
             self.next_block_id += 1
             with open(self.index_file, 'r+b') as f:
-                f.seek(HEADER_SIZE + left_node_id * NODE_SIZE)
+                f.seek(HEADER_SIZE + (left_node_id * NODE_SIZE))
                 new_node_data = struct.pack(">Q", left_node_id)
                 # Parent ID (to be updated later)
                 new_node_data += struct.pack(">Q", 0)
@@ -189,7 +200,7 @@ class BTree:
             right_node_id = self.next_block_id
             self.next_block_id += 1
             with open(self.index_file, 'r+b') as f:
-                f.seek(HEADER_SIZE + right_node_id * NODE_SIZE)
+                f.seek(HEADER_SIZE + (right_node_id * NODE_SIZE))
                 new_node_data = struct.pack(">Q", right_node_id)
                 # Parent ID (to be updated later)
                 new_node_data += struct.pack(">Q", 0)
@@ -211,28 +222,99 @@ class BTree:
             print("No index file is open.")
             return
 
-        with open(self.index_file, 'r+b') as f:
-            f.seek(HEADER_SIZE)
-            node_data = f.read(NODE_SIZE)
+        current_node_id = self.root_id
 
-            # Read number of keys
-            num_keys = struct.unpack(">Q", node_data[16:24])[0]
+        while current_node_id != 0:
+            with open(self.index_file, 'r+b') as f:
+                f.seek(HEADER_SIZE + (current_node_id * NODE_SIZE))
+                node_data = f.read(NODE_SIZE)
 
-            # Extract keys and values
-            keys = [struct.unpack(">Q", node_data[24 + i * 8:32 + i * 8])[0]
-                    for i in range(num_keys)]
-            values = [struct.unpack(
-                ">Q", node_data[176 + i * 8:184 + i * 8])[0] for i in range(num_keys)]
+                # Read number of keys, keys, and values
+                num_keys = struct.unpack(">Q", node_data[16:24])[0]
+                keys = [struct.unpack(
+                    ">Q", node_data[24 + (i * 8):32 + (i * 8)])[0] for i in range(num_keys)]
+                values = [struct.unpack(
+                    ">Q", node_data[176 + (i * 8):184 + (i * 8)])[0] for i in range(num_keys)]
 
-            if key in keys:
-                index = keys.index(key)
-                print(f"Found key: {key}, value: {values[index]}")
-            else:
-                print(f"Key {key} not found")
+                # Check if the key exists in this node
+                for i in range(num_keys):
+                    if keys[i] == key:
+                        print(f"Found key: {key}, value: {values[i]}")
+                        return
+
+                # Determine the next child node to search
+                for i in range(num_keys):
+                    if key < keys[i]:
+                        current_node_id = struct.unpack(
+                            ">Q", node_data[344 + (i * 8):352 + (i * 8)])[0]
+                        break
+                else:
+                    current_node_id = struct.unpack(
+                        ">Q", node_data[344 + (num_keys * 8):352 + (num_keys * 8)])[0]
+
+        print(f"Key {key} not found")
 
     def quit(self):
         print("Exiting the program.")
         exit()
+
+    def load(self, filename):
+        if self.index_file is None:
+            print("No index file is open.")
+            return
+
+        if not os.path.exists(filename):
+            print(f"File {filename} does not exist.")
+            return
+
+        with open(filename, 'r') as f:
+            for line in f:
+                try:
+                    key, value = map(int, line.strip().split(','))
+                    self.insert(key, value)
+                except ValueError:
+                    print(f"Invalid line in file: {line.strip()}")
+                    continue
+        print(f"Loaded key-value pairs from {filename}")
+
+    def print_index(self):
+        if self.index_file is None:
+            print("No index file is open.")
+            return
+
+        with open(self.index_file, 'r+b') as f:
+            f.seek(HEADER_SIZE)
+            node_data = f.read(NODE_SIZE)
+
+            num_keys = struct.unpack(">Q", node_data[16:24])[0]
+            keys = [struct.unpack(
+                ">Q", node_data[24 + (i * 8):32 + (i * 8)])[0] for i in range(num_keys)]
+            values = [struct.unpack(
+                ">Q", node_data[176 + (i * 8):184 + (i * 8)])[0] for i in range(num_keys)]
+
+            print("Key-Value Pairs in the Index:")
+            for key, value in zip(keys, values):
+                print(f"Key: {key}, Value: {value}")
+
+    def extract(self, filename):
+        if self.index_file is None:
+            print("No index file is open.")
+            return
+
+        with open(self.index_file, 'r+b') as f:
+            f.seek(HEADER_SIZE)
+            node_data = f.read(NODE_SIZE)
+
+            num_keys = struct.unpack(">Q", node_data[16:24])[0]
+            keys = [struct.unpack(
+                ">Q", node_data[24 + (i * 8):32 + (i * 8)])[0] for i in range(num_keys)]
+            values = [struct.unpack(
+                ">Q", node_data[176 + (i * 8):184 + (i * 8)])[0] for i in range(num_keys)]
+
+            with open(filename, 'w') as out_file:
+                for key, value in zip(keys, values):
+                    out_file.write(f"{key},{value}\n")
+            print(f"Extracted key-value pairs to {filename}")
 
     def menu(self):
         while True:
@@ -240,7 +322,10 @@ class BTree:
             print("1. Create a new index file (create)")
             print("2. Insert a key/value pair (insert)")
             print("3. Search for a key (search)")
-            print("4. Quit (quit)")
+            print("4. Load key/value pairs from a file (load)")
+            print("5. Print all key/value pairs (print)")
+            print("6. Extract key/value pairs to a file (extract)")
+            print("7. Quit (quit)")
 
             command = input("Enter command: ").strip().lower()
 
@@ -260,7 +345,15 @@ class BTree:
                     continue
                 key = int(input("Enter key (unsigned integer): "))
                 self.search(key)
-            elif command == "quit" or command == "4":
+            elif command == "load" or command == "4":
+                filename = input("Enter the filename to load: ").strip()
+                self.load(filename)
+            elif command == "print" or command == "5":
+                self.print_index()
+            elif command == "extract" or command == "6":
+                filename = input("Enter the filename to extract: ").strip()
+                self.extract(filename)
+            elif command == "quit" or command == "7":
                 self.quit()
             else:
                 print("Invalid command.")

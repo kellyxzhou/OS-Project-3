@@ -105,3 +105,25 @@ Additionally, the search functionality was enhanced to search for keys in the ro
 - A significant challenge was aligning the data structures in memory with the actual file format. It was critical to ensure that the key-value pairs and child pointers were placed at the correct offsets in the node structure.
 - Debugging the issue took some time because the misalignment only became apparent during searches, making it tricky to pinpoint the exact cause. Once I identified the node layout problem, the fix was straightforward.
 
+
+### Devlog Entry - [2024-12-08, 10:00 AM]
+
+**What I did today:**
+- Today, I focused on fixing the issue where the search functionality was unable to correctly find the inserted keys in the B-tree. I discovered that after inserting key-value pairs, the values were not being written correctly into the file, causing the `search` function to return incorrect results.
+- The issue stemmed from incorrect padding and misaligned offsets when writing the values to the file. I updated the code to correctly handle node padding and adjusted the logic for writing and reading key-value pairs.
+  - **Insertion Fix**: When inserting key-value pairs, I ensured that values were written at the correct offsets in the node (starting at byte 176 for values).
+  - **Search Fix**: I updated the `search` function to correctly read values from the appropriate offsets during the search operation.
+  - **Node Layout**: I made sure that each node is padded correctly to ensure the proper structure for the B-tree.
+
+**What I learned:**
+- It became clear that careful management of file offsets and padding is essential when working with fixed-size node structures, especially when inserting and searching for keys. Every piece of data (keys, values, child pointers) needs to be written to specific offsets to maintain the integrity of the node structure.
+- Debugging this issue required me to focus on how data is stored and retrieved from the file, ensuring that each node in the tree is properly updated and consistent.
+
+**What I plan to do next:**
+- Continue testing the insertion and search functionality with various sets of key-value pairs to ensure that data is stored and retrieved correctly.
+- Begin implementing the logic for node splitting, as this is the next step to handle cases where a node exceeds the maximum number of keys.
+- Expand the `search` functionality to handle multi-level tree traversal, ensuring that keys are correctly found even in deeper levels of the B-tree.
+
+**Challenges faced:**
+- The main challenge today was fixing the issue with key-value pair retrieval. After inserting the first pair, I noticed that subsequent searches for keys returned `0` instead of the correct value.
+- The root cause was an issue with padding and incorrect offsets when writing values to the file, which resulted in misalignment during searches. Once the offsets were fixed and proper padding was added, the search function began working correctly.
