@@ -127,3 +127,36 @@ Additionally, the search functionality was enhanced to search for keys in the ro
 **Challenges faced:**
 - The main challenge today was fixing the issue with key-value pair retrieval. After inserting the first pair, I noticed that subsequent searches for keys returned `0` instead of the correct value.
 - The root cause was an issue with padding and incorrect offsets when writing values to the file, which resulted in misalignment during searches. Once the offsets were fixed and proper padding was added, the search function began working correctly.
+
+### Devlog Entry - [2024-12-08, 9:31 PM]
+
+**Thoughts so far:**
+The program's functionality for creating index files, inserting key-value pairs, and performing basic operations like searching and extracting key-value pairs is mostly in place. However, there was an issue with displaying the loaded key-value pairs after using the `load` command, which was identified and fixed. The problem arose because, while the key-value pairs were successfully loaded into the file, they weren’t being correctly inserted or displayed within the B-tree. The program would load the data, but the `print` function would fail to show the expected output, likely due to issues with traversing and displaying the nodes in the B-tree structure.
+
+To address this, I updated the `print_index` function to recursively traverse the B-tree from the root node, ensuring that all key-value pairs are printed. I also confirmed that the loaded key-value pairs are being inserted correctly into the B-tree.
+
+
+**What I accomplished this session:**
+- **Fixed the `load` function**: Ensured that key-value pairs are correctly inserted into the B-tree after loading from a file.
+- **Updated the `print_index` function**: Implemented a recursive traversal to ensure that all nodes and their key-value pairs are printed, regardless of the node's depth in the tree.
+- **Handled recursive node traversal**: When loading or printing, the program now correctly handles multi-level B-trees by recursively traversing the child nodes.
+
+**Challenges faced:**
+- The most significant challenge this session was ensuring that key-value pairs are correctly inserted into the B-tree after being loaded. The B-tree must handle the insertion and traversal operations effectively for data to be accessed and displayed properly.
+- Another challenge was correctly implementing recursive traversal for the `print_index` function, ensuring that all levels of the tree were considered.
+
+### Devlog Entry - [2024-12-08, 9:18 PM]
+
+- **Fixed Node Data and Child Pointer Handling:** 
+I addressed the issues with child pointer offsets and incorrect unpacking by adding additional checks to ensure child pointers are only unpacked when valid data exists. This also included handling cases where nodes don’t have children yet or have fewer children than expected.
+  
+- **Enhanced Node Traversal for Printing:** 
+I improved the `print_index` function by adding checks for child pointer offsets and ensuring that only valid child pointers are processed. I also added a more robust method to handle errors when data is incomplete or incorrectly formatted. The system now prints nodes and keys correctly without crashing due to data issues.
+  
+- **Node Splitting Fixes:** 
+I verified that the node splitting mechanism works correctly by ensuring that child pointers and keys are split properly. When a node is full, it now properly divides its keys and values, and the middle key is moved to a new root node as expected.
+
+**What I learned:**
+- Managing file data with fixed offsets in binary format is tricky, especially when child pointers and node data are tightly packed. Proper boundary checks and handling for short nodes or missing data are essential to ensure the tree remains consistent during operations like insertion and splitting.
+  
+- Traversing a B-tree efficiently requires careful management of node structure, especially when nodes are split or when a node has no children (leaf nodes). Ensuring the tree handles these cases gracefully is critical for the stability of the system.
